@@ -3,8 +3,7 @@ package app
 import (
 	"net/http"
 
-	"github.com/NonsoAmadi10/bitcoin-wallet/config"
-	"github.com/NonsoAmadi10/bitcoin-wallet/models"
+	"github.com/NonsoAmadi10/bitcoin-wallet/controllers"
 	"github.com/go-playground/validator/v10"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo/v4"
@@ -35,13 +34,13 @@ func StartApp() *echo.Echo {
 	}))
 
 	// Initialize DB
-	config.SetupDB(&models.Wallet{})
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
-
-	// Admin Routers
+	api := e.Group("/api/v1")
+	api.POST("/generate-wallet", controllers.CreateWallet)
+	api.POST("/generate-p2sh", controllers.GenerateP2SHAddresses)
 
 	return e
 }
