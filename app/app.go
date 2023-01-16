@@ -41,6 +41,7 @@ func StartApp() *echo.Echo {
 	api := e.Group("/api/v1")
 	api.POST("/generate-wallet", controllers.CreateWallet)
 	api.POST("/generate-p2sh", controllers.GenerateP2SHAddresses)
+	api.POST("/generate-p2wpkh", controllers.GenerateP2WPKHAddresses)
 
 	return e
 }

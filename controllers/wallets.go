@@ -23,12 +23,16 @@ type Wallet struct {
 }
 
 type P2SHAddress struct {
-	MasterPrivKey string `json:"master_priv_key" validate:"required"`
+	MasterPubKey string `json:"master_pub_key" validate:"required"`
 }
 
 type P2SHAddressResponse struct {
 	Address      string `json:"p2sh_address" validate:"required"`
 	RedeemScript string `json:"redeem_script" validate:"required"`
+}
+
+type P2WPKHAddresses struct {
+	Address string `json:"p2wpkh_address" validate:"required"`
 }
 
 func CreateWallet(c echo.Context) error {
@@ -80,7 +84,7 @@ func GenerateP2SHAddresses(c echo.Context) (err error) {
 		return err
 	}
 
-	masterKey, err := hdkeychain.NewKeyFromString(reqBody.MasterPrivKey)
+	masterKey, err := hdkeychain.NewKeyFromString(reqBody.MasterPubKey)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -114,6 +118,55 @@ func GenerateP2SHAddresses(c echo.Context) (err error) {
 	response := &P2SHAddressResponse{
 		Address:      p2shAddr.EncodeAddress(),
 		RedeemScript: string(redeemScript),
+	}
+
+	return c.JSONPretty(http.StatusCreated, response, " ")
+}
+
+func GenerateP2WPKHAddresses(c echo.Context) (err error) {
+
+	reqBody := new(P2SHAddress)
+	if err := c.Bind(&reqBody); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err = c.Validate(reqBody); err != nil {
+		return err
+	}
+
+	masterKey, err := hdkeychain.NewKeyFromString(reqBody.MasterPubKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Get the first child key using BIP32
+	childKey, err := masterKey.Derive(0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Generate a P2WPKH address
+	pubKey, err := childKey.ECPubKey()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	pubKeyHash := btcutil.Hash160(pubKey.SerializeCompressed())
+	// Derive the testnet address using the public key
+	testnetParams := &chaincfg.TestNet3Params
+	//mainnetParams := &chaincfg.MainNetParams
+
+	p2wpkhAddr, err := btcutil.NewAddressWitnessPubKeyHash(pubKeyHash, testnetParams)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	response := &P2WPKHAddresses{
+		Address: p2wpkhAddr.EncodeAddress(),
 	}
 
 	return c.JSONPretty(http.StatusCreated, response, " ")
